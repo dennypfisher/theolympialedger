@@ -5,34 +5,36 @@ import { initLineChart } from './components/lineChart.js';
 import { initBillTimeline } from './components/billTimeline.js';
 import { renderBills } from './components/billList.js';
 import { initCalculators, calcCounty, calcTax } from './components/calculators.js';
-import { loadLiveData, getValue } from './modules/dataProvider.js';
 
-// --- LIVE DATA (loaded from public/data.json via multi-source fetcher) ---
-// Will be populated by DOMContentLoaded after calling loadLiveData()
+// --- LIVE DATA (loaded from public/data.json via scraping) ---
 export let DATA = null;
 
 // --- FALLBACK DATA (used if live data fails to load) ---
 const FALLBACK_DATA = {
-  population: 7950000,
-  debtAnchor: { date: '2024-01-01T00:00:00', amount: 143000000000, rate: 221.96 },
-  budget: [
-    { label: 'Education', value: 42000000000, wages: 22000000000, capital: 8000000000, equipment: 2000000000 },
-    { label: 'Human Services', value: 31000000000, wages: 15000000000, capital: 3000000000, equipment: 1500000000 },
-    { label: 'Transportation', value: 17000000000, wages: 3000000000, capital: 9000000000, equipment: 1000000000 },
-    { label: 'Public Safety', value: 9000000000, wages: 6000000000, capital: 1000000000, equipment: 500000000 },
-    { label: 'Gov Ops', value: 6500000000, wages: 3000000000, capital: 500000000, equipment: 200000000 },
-    { label: 'Environment', value: 3000000000, wages: 1000000000, capital: 800000000, equipment: 100000000 },
-    { label: 'Other', value: 5000000000, wages: 1800000000, capital: 800000000, equipment: 200000000 }
-  ],
-  bills: [
-    { id: 'HB-1042', title: 'Housing Density Bonus', status: 'Enacted', impact: 12000000, desc: 'Increases density in urban zones.' },
-    { id: 'SB-9000', title: 'Ferry Infrastructure Bond', status: 'Introduced', impact: -200000000, desc: 'Authorizes bonds for fleet repair.' },
-    { id: 'HB-1110', title: 'Missing Middle Housing', status: 'Passed Not Signed', impact: 5000000, desc: 'Legalizes duplexes statewide.' },
-    { id: 'SB-5599', title: 'Youth Services Funding', status: 'Enacted', impact: -45000000, desc: 'Expands shelter access.' },
-    { id: 'HB-1240', title: 'Public Safety Regulation', status: 'Enacted', impact: -2000000, desc: 'Firearm restrictions.' }
-  ],
-  counties: { King: 2300000, Pierce: 950000, Snohomish: 850000, Spokane: 550000, Clark: 520000, Thurston: 300000, Yakima: 260000 }
+  budget_total: {
+    description: 'Fallback budget data',
+    value: 'Data unavailable',
+    source: 'N/A'
+  },
+  population_total: {
+    description: 'Fallback population data',
+    value: 'Data unavailable',
+    source: 'N/A'
+  }
 };
+
+// Fetch live data from public/data.json
+async function loadLiveData() {
+  try {
+    const response = await fetch('/public/data.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn('⚠ Failed to load live data, using fallback:', err);
+    return FALLBACK_DATA;
+  }
+}
 
 // Small, focused helpers for DOM navigation
 function bindNav() {
@@ -99,15 +101,9 @@ function bindBudgetDetail() {
 
 // Kickoff
 document.addEventListener('DOMContentLoaded', async () => {
-  // Load live data from public/data.json (multi-source reconciled)
-  // Falls back to FALLBACK_DATA if fetch fails
-  try {
-    DATA = await loadLiveData();
-    console.log('✓ Live data loaded successfully', DATA);
-  } catch (err) {
-    console.warn('⚠ Failed to load live data, using fallback:', err);
-    DATA = FALLBACK_DATA;
-  }
+  // Load live data
+  DATA = await loadLiveData();
+  console.log('✓ Data loaded:', DATA);
 
   // Verify DATA is available before proceeding
   if (!DATA) {
