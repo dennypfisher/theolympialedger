@@ -14,6 +14,8 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- D3 for timelines -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 
   <style>
     :root{
@@ -238,6 +240,14 @@
           <span class="text-xs font-bold uppercase text-gray-500 sans">View:</span>
           <button onclick="APP.toggleBudgetView('total')" class="px-3 py-1 bg-gray-800 text-white text-xs uppercase mono">Total $</button>
           <button onclick="APP.toggleBudgetView('percapita')" class="px-3 py-1 bg-gray-200 text-gray-800 border border-gray-400 text-xs uppercase mono hover:bg-gray-300">Per Capita</button>
+
+          <!-- Chart Type Controls -->
+          <span class="text-xs font-bold uppercase text-gray-500 sans ml-4">Chart:</span>
+          <div class="inline-flex rounded-md shadow-sm" role="tablist" aria-label="Chart type">
+            <button id="chart-type-bar" class="px-2 py-1 bg-gray-800 text-white text-xs uppercase mono" role="tab">Bar</button>
+            <button id="chart-type-stacked" class="px-2 py-1 bg-gray-200 text-gray-800 border border-gray-400 text-xs uppercase mono hover:bg-gray-300" role="tab">Stacked</button>
+            <button id="chart-type-pie" class="px-2 py-1 bg-gray-200 text-gray-800 border border-gray-400 text-xs uppercase mono hover:bg-gray-300" role="tab">Pie</button>
+          </div>
         </div>
       </div>
 
@@ -247,6 +257,7 @@
           <h3 class="font-bold text-lg mb-4 text-center border-b border-gray-200 pb-2">Expenditure by Department</h3>
           <div class="chart-wrap">
             <canvas id="chart-budget"></canvas>
+            <canvas id="chart-budget-pie" class="hidden absolute inset-0 w-full h-full"></canvas>
           </div>
         </div>
 
@@ -277,6 +288,16 @@
           </div>
         </div>
       </div>
+
+      <!-- TIMESERIES (Revenue vs Expenditure) -->
+      <div class="mt-6">
+        <div class="ledger-card">
+          <h4 class="font-bold mb-2">Revenue vs Expenditure (Historic)</h4>
+          <div class="chart-wrap" style="height:220px">
+            <canvas id="chart-timeseries"></canvas>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- BILLS PAGE -->
@@ -284,6 +305,12 @@
       <div class="mb-6 border-b-4 border-double border-gray-800 pb-4">
         <h2 class="text-3xl font-bold">Legislative Docket</h2>
         <p class="text-gray-600 italic">Tracking bills with significant fiscal impact.</p>
+      </div>
+
+      <!-- BILL TIMELINE -->
+      <div class="ledger-card mb-6">
+        <h4 class="font-bold mb-2">Bill Timeline (Interactive)</h4>
+        <div id="bill-timeline" style="min-height:140px"></div>
       </div>
 
       <div class="flex flex-col md:flex-row gap-6">
@@ -415,303 +442,7 @@
     </div>
   </footer>
 
-  <!-- JAVASCRIPT LOGIC -->
-  <script>
-    /*******************************************************
-     * DATA STORE (MOCK)
-     *******************************************************/
-    const DATA = {
-      population: 7950000,
-      
-      // FIXED: Replaced static totalDebt with an Anchor Point
-      // Anchor Date: Jan 1, 2024
-      // Anchor Amount: $143 Billion (Estimate from 2024 reports)
-      // Growth Rate: ~$7 Billion / Year (~$221.96 / Second)
-      debtAnchor: {
-        date: '2024-01-01T00:00:00', 
-        amount: 143000000000, 
-        rate: 221.96
-      },
-      
-      budget: [
-        { label: 'Education', value: 42000000000, wages: 22000000000, capital: 8000000000, equipment: 2000000000 },
-        { label: 'Human Services', value: 31000000000, wages: 15000000000, capital: 3000000000, equipment: 1500000000 },
-        { label: 'Transportation', value: 17000000000, wages: 3000000000, capital: 9000000000, equipment: 1000000000 },
-        { label: 'Public Safety', value: 9000000000, wages: 6000000000, capital: 1000000000, equipment: 500000000 },
-        { label: 'Gov Ops', value: 6500000000, wages: 3000000000, capital: 500000000, equipment: 200000000 },
-        { label: 'Environment', value: 3000000000, wages: 1000000000, capital: 800000000, equipment: 100000000 },
-        { label: 'Other', value: 5000000000, wages: 1800000000, capital: 800000000, equipment: 200000000 }
-      ],
-
-      bills: [
-        { id: 'HB-1042', title: 'Housing Density Bonus', status: 'Enacted', impact: 12000000, desc: 'Increases density in urban zones.' },
-        { id: 'SB-9000', title: 'Ferry Infrastructure Bond', status: 'Introduced', impact: -200000000, desc: 'Authorizes bonds for fleet repair.' },
-        { id: 'HB-1110', title: 'Missing Middle Housing', status: 'Passed Not Signed', impact: 5000000, desc: 'Legalizes duplexes statewide.' },
-        { id: 'SB-5599', title: 'Youth Services Funding', status: 'Enacted', impact: -45000000, desc: 'Expands shelter access.' },
-        { id: 'HB-1240', title: 'Public Safety Regulation', status: 'Enacted', impact: -2000000, desc: 'Firearm restrictions.' }
-      ],
-
-      counties: {
-        'King': 2300000,
-        'Pierce': 950000,
-        'Snohomish': 850000,
-        'Spokane': 550000,
-        'Clark': 520000,
-        'Thurston': 300000,
-        'Yakima': 260000
-      }
-    };
-
-    /*******************************************************
-     * APP LOGIC
-     *******************************************************/
-    const APP = {
-      chartInstance: null,
-      currentView: 'total', // 'total' or 'percapita'
-
-      init() {
-        this.bindNav();
-        this.startDebtClock();
-        this.renderBills();
-        this.initBudgetChart();
-      },
-
-      // HELPER: Get Real-Time Debt
-      getCurrentDebt() {
-        const now = Date.now();
-        const anchorTime = new Date(DATA.debtAnchor.date).getTime();
-        const elapsedSeconds = (now - anchorTime) / 1000;
-        return DATA.debtAnchor.amount + (elapsedSeconds * DATA.debtAnchor.rate);
-      },
-
-      // NAVIGATION
-      bindNav() {
-        const btns = document.querySelectorAll('.nav-btn');
-        const mobileToggle = document.getElementById('mobile-toggle');
-        
-        btns.forEach(btn => {
-          btn.addEventListener('click', (e) => this.nav(e.target.dataset.target));
-        });
-
-        // Simple Mobile Toggle
-        if(mobileToggle) {
-          mobileToggle.addEventListener('click', () => {
-             const nav = document.querySelector('nav');
-             nav.classList.toggle('hidden'); // Simplified for this demo
-             nav.classList.toggle('flex');
-             nav.classList.toggle('flex-col');
-             nav.classList.toggle('absolute');
-             nav.classList.toggle('top-16');
-             nav.classList.toggle('left-0');
-             nav.classList.toggle('bg-[#fdfbf7]');
-             nav.classList.toggle('w-full');
-             nav.classList.toggle('p-4');
-             nav.classList.toggle('border-b');
-             nav.classList.toggle('border-gray-800');
-          });
-        }
-      },
-
-      nav(targetId) {
-        // Hide all pages
-        document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-        // Show target
-        document.getElementById(`page-${targetId}`).classList.remove('hidden');
-        // Update Nav State
-        document.querySelectorAll('.nav-btn').forEach(b => {
-          b.classList.remove('active');
-          if(b.dataset.target === targetId) b.classList.add('active');
-        });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
-
-      // DEBT CLOCK
-      startDebtClock() {
-        const debtEl = document.getElementById('debt-clock');
-        const perCapEl = document.getElementById('per-capita-debt');
-
-        // Update continuously
-        setInterval(() => {
-          const currentVal = this.getCurrentDebt();
-          
-          debtEl.innerText = currentVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-          
-          // Per Capita
-          const perCap = currentVal / DATA.population;
-          perCapEl.innerText = perCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        }, 100); // 10 updates per second for smooth ticking
-      },
-
-      // BILLS LIST
-      renderBills() {
-        const filter = document.getElementById('bill-filter').value;
-        const container = document.getElementById('bills-list');
-        container.innerHTML = '';
-        
-        const filtered = DATA.bills.filter(b => filter === 'All' || b.status === filter);
-        document.getElementById('bill-count').innerText = filtered.length;
-
-        filtered.forEach(b => {
-          const el = document.createElement('div');
-          el.className = 'ledger-card hover:shadow-md transition-shadow flex justify-between items-start';
-          el.innerHTML = `
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-mono text-xs font-bold text-gray-500">${b.id}</span>
-                <span class="px-2 py-0.5 bg-gray-200 text-gray-800 text-[0.6rem] uppercase tracking-wider font-bold rounded-sm">${b.status}</span>
-              </div>
-              <h4 class="font-bold text-lg text-gray-900">${b.title}</h4>
-              <p class="text-sm text-gray-600 font-serif mt-1">${b.desc}</p>
-            </div>
-            <div class="text-right">
-              <div class="text-xs text-gray-500 uppercase tracking-widest">Est. Impact</div>
-              <div class="font-mono font-bold ${b.impact < 0 ? 'text-red-600' : 'text-emerald-700'}">
-                ${b.impact < 0 ? '-' : '+'}${Math.abs(b.impact / 1000000).toFixed(1)}M
-              </div>
-            </div>
-          `;
-          container.appendChild(el);
-        });
-      },
-
-      // SEARCH FUNCTION
-      search() {
-        const q = document.getElementById('global-search').value.toLowerCase();
-        const resContainer = document.getElementById('search-results');
-        if(q.length < 2) {
-          resContainer.classList.add('hidden');
-          return;
-        }
-
-        const hits = DATA.bills.filter(b => b.title.toLowerCase().includes(q) || b.id.toLowerCase().includes(q));
-        
-        resContainer.innerHTML = '';
-        resContainer.classList.remove('hidden');
-        
-        if(hits.length === 0) {
-          resContainer.innerHTML = '<div class="text-xs text-gray-500 italic p-2">No records found.</div>';
-          return;
-        }
-
-        hits.forEach(b => {
-           const div = document.createElement('div');
-           div.className = 'p-2 bg-white border border-gray-300 text-sm hover:bg-gray-50 cursor-pointer';
-           div.innerHTML = `<strong>${b.id}</strong>: ${b.title}`;
-           div.onclick = () => { APP.nav('bills'); document.getElementById('global-search').value=''; resContainer.classList.add('hidden'); };
-           resContainer.appendChild(div);
-        });
-      },
-
-      // BUDGET CHART
-      initBudgetChart() {
-        const ctx = document.getElementById('chart-budget').getContext('2d');
-        const colors = ['#064e3b', '#065f46', '#047857', '#059669', '#10b981', '#34d399', '#6ee7b7'];
-
-        this.chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: DATA.budget.map(d => d.label),
-            datasets: [{
-              label: 'Budget (Billions)',
-              data: DATA.budget.map(d => d.value / 1000000000),
-              backgroundColor: colors,
-              borderWidth: 1,
-              borderColor: '#022c22'
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false }
-            },
-            onClick: (e, elements) => {
-              if (elements.length > 0) {
-                const index = elements[0].index;
-                this.updateBudgetDetail(index);
-              }
-            }
-          }
-        });
-      },
-
-      toggleBudgetView(mode) {
-        this.currentView = mode;
-        const pop = DATA.population;
-        
-        // Update Chart Data
-        const newData = DATA.budget.map(d => {
-           return mode === 'total' 
-             ? d.value / 1000000000 
-             : Math.round(d.value / pop);
-        });
-        
-        this.chartInstance.data.datasets[0].data = newData;
-        this.chartInstance.data.datasets[0].label = mode === 'total' ? 'Billions' : 'Dollars Per Citizen';
-        this.chartInstance.update();
-
-        // Update Text
-        const btns = document.querySelectorAll('button[onclick^="APP.toggleBudgetView"]');
-        btns[0].className = mode === 'total' ? 'px-3 py-1 bg-gray-800 text-white text-xs uppercase mono' : 'px-3 py-1 bg-gray-200 text-gray-800 border border-gray-400 text-xs uppercase mono hover:bg-gray-300';
-        btns[1].className = mode === 'percapita' ? 'px-3 py-1 bg-gray-800 text-white text-xs uppercase mono' : 'px-3 py-1 bg-gray-200 text-gray-800 border border-gray-400 text-xs uppercase mono hover:bg-gray-300';
-      },
-
-      updateBudgetDetail(index) {
-        const item = DATA.budget[index];
-        const fmt = (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 1 }) + (n > 1000000000 ? 'B' : '');
-        
-        document.getElementById('budget-detail-name').innerText = item.label;
-        document.getElementById('budget-detail-amount').innerText = fmt(item.value);
-        document.getElementById('budget-detail-wages').innerText = fmt(item.wages);
-        document.getElementById('budget-detail-capital').innerText = fmt(item.capital);
-        document.getElementById('budget-detail-equip').innerText = fmt(item.equipment);
-      },
-
-      // CALCULATORS
-      calcCounty() {
-        const name = document.getElementById('county-select').value;
-        if(!name) return;
-        
-        const pop = DATA.counties[name];
-        const share = (pop / DATA.population);
-        
-        // FIXED: Use the real-time debt number for calculation
-        const currentTotalDebt = this.getCurrentDebt();
-        const debtShare = currentTotalDebt * share;
-        const perCap = currentTotalDebt / DATA.population;
-
-        document.getElementById('county-share-val').innerText = (debtShare / 1000000000).toFixed(2) + " Billion";
-        document.getElementById('county-percap-val').innerText = perCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        document.getElementById('county-result').classList.remove('hidden');
-      },
-
-      calcTax() {
-        const val = parseFloat(document.getElementById('purchase-amount').value);
-        if(!val) return;
-
-        const tax = val * 0.065;
-        const totalBudget = DATA.budget.reduce((a,b) => a + b.value, 0);
-        
-        // Ratios
-        const rEdu = DATA.budget.find(d => d.label === 'Education').value / totalBudget;
-        const rHHS = DATA.budget.find(d => d.label === 'Human Services').value / totalBudget;
-        const rSafe = DATA.budget.find(d => d.label === 'Public Safety').value / totalBudget;
-        
-        document.getElementById('rec-total').innerText = val.toFixed(2);
-        document.getElementById('rec-tax').innerText = tax.toFixed(2);
-        
-        document.getElementById('rec-edu').innerText = (tax * rEdu).toFixed(2);
-        document.getElementById('rec-hhs').innerText = (tax * rHHS).toFixed(2);
-        document.getElementById('rec-safe').innerText = (tax * rSafe).toFixed(2);
-        document.getElementById('rec-other').innerText = (tax * (1 - rEdu - rHHS - rSafe)).toFixed(2);
-        
-        document.getElementById('receipt-result').classList.remove('hidden');
-      }
-    };
-
-    // INIT
-    APP.init();
-
-  </script>
+  <!-- App entry (modularized for scale) -->
+  <script type="module" src="/src/app.js"></script>
 </body>
 </html>

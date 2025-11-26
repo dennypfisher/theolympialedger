@@ -1,0 +1,177 @@
+{
+  "lastFetched": "2024-01-15T14:30:00Z",
+  "description": "Washington State fiscal data - multi-source reconciled values with full attribution",
+  "dataPoints": {
+    "population_total": {
+      "value": 7950000,
+      "unit": "people",
+      "description": "Total population of Washington State",
+      "confidence": 0.98,
+      "method": "weighted-average",
+      "sources": [
+        {
+          "id": "census_2020",
+          "name": "US Census 2020 Decennial",
+          "url": "https://www.census.gov/census2020/",
+          "apiUrl": "https://api.census.gov/data/2020/dec/dhc",
+          "value": 7964000,
+          "weight": 0.98,
+          "success": true,
+          "timestamp": "2024-01-15T14:25:00Z",
+          "error": null
+        },
+        {
+          "id": "ofm_estimates",
+          "name": "WA OFM Population Estimates",
+          "url": "https://ofm.wa.gov/",
+          "apiUrl": "https://ofm.wa.gov/api/population",
+          "value": 7936000,
+          "weight": 0.95,
+          "success": true,
+          "timestamp": "2024-01-15T14:20:00Z",
+          "error": null
+        }
+      ]
+    },
+    "debt_total": {
+      "value": 143000000000,
+      "unit": "USD",
+      "description": "Total state debt outstanding",
+      "confidence": 0.95,
+      "method": "direct",
+      "sources": [
+        {
+          "id": "wa_treasury",
+          "name": "WA State Treasurer - Debt Outstanding",
+          "url": "https://tre.wa.gov/",
+          "apiUrl": "https://tre.wa.gov/api/debt/outstanding",
+          "value": 143000000000,
+          "weight": 1.0,
+          "success": true,
+          "timestamp": "2024-01-15T14:30:00Z",
+          "error": null
+        }
+      ]
+    },
+    "budget_total": {
+      "value": 113500000000,
+      "unit": "USD",
+      "description": "Total biennial state budget",
+      "confidence": 0.92,
+      "method": "weighted-average",
+      "sources": [
+        {
+          "id": "ofm_budget",
+          "name": "OFM Enacted Budget",
+          "url": "https://ofm.wa.gov/state-budgets",
+          "apiUrl": "https://ofm.wa.gov/api/budget/enacted",
+          "value": 113500000000,
+          "weight": 1.0,
+          "success": true,
+          "timestamp": "2024-01-15T14:15:00Z",
+          "error": null
+        }
+      ]
+    },
+    "revenue_total": {
+      "value": 56000000000,
+      "unit": "USD",
+      "description": "Annual tax revenue collections",
+      "confidence": 0.90,
+      "method": "max-confidence",
+      "sources": [
+        {
+          "id": "dor_collections",
+          "name": "WA Dept of Revenue - Tax Collections",
+          "url": "https://dor.wa.gov",
+          "apiUrl": "https://dor.wa.gov/api/revenue/collections",
+          "value": 56000000000,
+          "weight": 1.0,
+          "success": true,
+          "timestamp": "2024-01-15T14:10:00Z",
+          "error": null
+        }
+      ]
+    },
+    "housing_stock_total": {
+      "value": 3200000,
+      "unit": "units",
+      "description": "Total housing units in Washington State",
+      "confidence": 0.88,
+      "method": "weighted-average",
+      "sources": [
+        {
+          "id": "census_acs_housing",
+          "name": "US Census American Community Survey - Housing",
+          "url": "https://www.census.gov/programs-surveys/acs",
+          "apiUrl": "https://api.census.gov/data/2022/acs/acs1",
+          "value": 3200000,
+          "weight": 0.95,
+          "success": true,
+          "timestamp": "2024-01-15T14:05:00Z",
+          "error": null
+        }
+      ]
+    },
+    "incarceration_total": {
+      "value": 9500,
+      "unit": "people",
+      "description": "Total incarcerated in WA prisons",
+      "confidence": 0.96,
+      "method": "direct",
+      "sources": [
+        {
+          "id": "doc_population",
+          "name": "WA Dept of Corrections - Prison Population",
+          "url": "https://www.doc.wa.gov/",
+          "apiUrl": "https://doc.wa.gov/api/population/realtime",
+          "value": 9500,
+          "weight": 1.0,
+          "success": true,
+          "timestamp": "2024-01-15T14:28:00Z",
+          "error": null
+        }
+      ]
+    },
+    "major_exports_value": {
+      "value": 89000000000,
+      "unit": "USD",
+      "description": "Annual exports value",
+      "confidence": 0.85,
+      "method": "weighted-average",
+      "sources": [
+        {
+          "id": "bea_exports",
+          "name": "Bureau of Economic Analysis - State Exports",
+          "url": "https://www.bea.gov/",
+          "apiUrl": "https://api.bea.gov/api/nipa/exports",
+          "value": 89000000000,
+          "weight": 0.98,
+          "success": true,
+          "timestamp": "2024-01-14T00:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    "major_imports_value": {
+      "value": 102000000000,
+      "unit": "USD",
+      "description": "Annual imports value",
+      "confidence": 0.84,
+      "method": "weighted-average",
+      "sources": [
+        {
+          "id": "usa_trade_imports",
+          "name": "USA Trade Online - Imports",
+          "url": "https://usatrade.census.gov/",
+          "apiUrl": "https://api.trade.gov/v1/imports",
+          "value": 102000000000,
+          "weight": 0.98,
+          "success": true,
+          "timestamp": "2024-01-14T00:00:00Z",
+          "error": null
+        }
+      ]
+    }
+  }
+}

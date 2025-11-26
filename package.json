@@ -1,0 +1,12 @@
+{
+  "name": "theolympia-ledger",
+  "version": "0.1.0",
+  "description": "Washington state fiscal transparency dashboard (starter scaffold)",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "npx serve -s . -l 5000",
+    "fetch-data": "node scripts/fetchData.js",
+    "normalize-data": "node scripts/normalizeData.js"
+  }
+}
